@@ -183,9 +183,10 @@ function GraphCanvasInner({
   const colorMode =
     effectiveTheme === 'system' ? systemColorMode : themeOption?.isDark ? 'dark' : 'light';
 
-  // Filter state (category, status, and negative toggle are local to graph view)
+  // Filter state is local to graph view
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [selectedWorktrees, setSelectedWorktrees] = useState<string[]>([]);
   const [isNegativeFilter, setIsNegativeFilter] = useState(false);
 
   // Debounce search query for performance with large graphs
@@ -196,11 +197,12 @@ function GraphCanvasInner({
     searchQuery: debouncedSearchQuery,
     selectedCategories,
     selectedStatuses,
+    selectedWorktrees,
     isNegativeFilter,
   };
 
   // Calculate filter results
-  const filterResult = useGraphFilter(features, filterState, runningAutoTasks);
+  const filterResult = useGraphFilter(features, filterState, runningAutoTasks, projectPath);
 
   const estimatedEdgeCount = useMemo(() => {
     return features.reduce((total, feature) => {
@@ -331,6 +333,7 @@ function GraphCanvasInner({
     onSearchQueryChange('');
     setSelectedCategories([]);
     setSelectedStatuses([]);
+    setSelectedWorktrees([]);
     setIsNegativeFilter(false);
   }, [onSearchQueryChange]);
 
@@ -528,11 +531,13 @@ function GraphCanvasInner({
         <GraphFilterControls
           filterState={filterState}
           availableCategories={filterResult.availableCategories}
+          availableWorktrees={filterResult.availableWorktrees}
           hasActiveFilter={filterResult.hasActiveFilter}
           searchQuery={searchQuery}
           onSearchQueryChange={onSearchQueryChange}
           onCategoriesChange={setSelectedCategories}
           onStatusesChange={setSelectedStatuses}
+          onWorktreesChange={setSelectedWorktrees}
           onNegativeFilterChange={setIsNegativeFilter}
           onClearFilters={handleClearFilters}
         />

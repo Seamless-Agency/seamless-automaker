@@ -27,6 +27,7 @@ export function GraphViewPage() {
   const {
     currentProject,
     updateFeature,
+    autoModeByWorktree,
     getCurrentWorktree,
     getWorktrees,
     setWorktrees,
@@ -39,6 +40,7 @@ export function GraphViewPage() {
     useShallow((state) => ({
       currentProject: state.currentProject,
       updateFeature: state.updateFeature,
+      autoModeByWorktree: state.autoModeByWorktree,
       getCurrentWorktree: state.getCurrentWorktree,
       getWorktrees: state.getWorktrees,
       setWorktrees: state.setWorktrees,
@@ -74,6 +76,19 @@ export function GraphViewPage() {
   // Auto mode hook
   const autoMode = useAutoMode();
   const runningAutoTasks = autoMode.runningTasks;
+  const graphRunningAutoTasks = useMemo(() => {
+    if (!currentProject?.id) return [];
+
+    const prefix = `${currentProject.id}::`;
+
+    return Array.from(
+      new Set(
+        Object.entries(autoModeByWorktree)
+          .filter(([key]) => key.startsWith(prefix))
+          .flatMap(([, state]) => state.runningTasks ?? [])
+      )
+    );
+  }, [autoModeByWorktree, currentProject?.id]);
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -240,10 +255,10 @@ export function GraphViewPage() {
   // In-progress features for shortcuts
   const inProgressFeaturesForShortcuts = useMemo(() => {
     return hookFeatures.filter((f) => {
-      const isRunning = runningAutoTasks.includes(f.id);
+      const isRunning = graphRunningAutoTasks.includes(f.id);
       return isRunning || f.status === 'in_progress';
     });
-  }, [hookFeatures, runningAutoTasks]);
+  }, [hookFeatures, graphRunningAutoTasks]);
 
   // Simple feature update handler for graph view (dependencies, etc.)
   const handleGraphUpdateFeature = useCallback(
@@ -402,9 +417,7 @@ export function GraphViewPage() {
       {/* Graph View Content */}
       <GraphView
         features={hookFeatures}
-        runningAutoTasks={runningAutoTasks}
-        currentWorktreePath={currentWorktreePath}
-        currentWorktreeBranch={currentWorktreeBranch}
+        runningAutoTasks={graphRunningAutoTasks}
         projectPath={currentProject?.path || null}
         searchQuery={searchQuery}
         onSearchQueryChange={setSearchQuery}

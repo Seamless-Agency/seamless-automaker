@@ -1,10 +1,13 @@
 import { useMemo } from 'react';
-import { Feature } from '@/store/app-store';
+import { Feature, useAppStore } from '@/store/app-store';
+
+const MAIN_WORKTREE_LABEL = 'Main';
 
 export interface GraphFilterState {
   searchQuery: string;
   selectedCategories: string[];
   selectedStatuses: string[];
+  selectedWorktrees: string[];
   isNegativeFilter: boolean;
 }
 
@@ -24,7 +27,26 @@ export interface GraphFilterResult {
   highlightedNodeIds: Set<string>;
   highlightedEdgeIds: Set<string>;
   availableCategories: string[];
+  availableWorktrees: string[];
   hasActiveFilter: boolean;
+}
+
+function getFeatureWorktreeLabel(feature: Feature, primaryWorktreeBranch: string | null): string {
+  const branchName = feature.branchName?.trim();
+
+  if (!branchName) {
+    return MAIN_WORKTREE_LABEL;
+  }
+
+  if (primaryWorktreeBranch && branchName === primaryWorktreeBranch) {
+    return MAIN_WORKTREE_LABEL;
+  }
+
+  if (branchName === 'main') {
+    return MAIN_WORKTREE_LABEL;
+  }
+
+  return branchName;
 }
 
 /**
@@ -132,9 +154,19 @@ function getEffectiveStatus(feature: Feature, runningTaskIds: Set<string>): Stat
 export function useGraphFilter(
   features: Feature[],
   filterState: GraphFilterState,
-  runningAutoTasks: string[] = []
+  runningAutoTasks: string[] = [],
+  projectPath?: string | null
 ): GraphFilterResult {
-  const { searchQuery, selectedCategories, selectedStatuses, isNegativeFilter } = filterState;
+  const primaryWorktreeBranch = useAppStore((state) =>
+    projectPath ? state.getPrimaryWorktreeBranch(projectPath) : null
+  );
+  const {
+    searchQuery,
+    selectedCategories,
+    selectedStatuses,
+    selectedWorktrees,
+    isNegativeFilter,
+  } = filterState;
 
   return useMemo(() => {
     // Extract all unique categories
@@ -142,13 +174,26 @@ export function useGraphFilter(
       new Set(features.map((f) => f.category).filter(Boolean))
     ).sort();
 
+    const availableWorktrees = Array.from(
+      new Set(features.map((f) => getFeatureWorktreeLabel(f, primaryWorktreeBranch)))
+    ).sort((a, b) => {
+      if (a === MAIN_WORKTREE_LABEL) return -1;
+      if (b === MAIN_WORKTREE_LABEL) return 1;
+      return a.localeCompare(b);
+    });
+
     const normalizedQuery = searchQuery.toLowerCase().trim();
     const runningTaskIds = new Set(runningAutoTasks);
     const hasSearchQuery = normalizedQuery.length > 0;
     const hasCategoryFilter = selectedCategories.length > 0;
     const hasStatusFilter = selectedStatuses.length > 0;
+    const hasWorktreeFilter = selectedWorktrees.length > 0;
     const hasActiveFilter =
-      hasSearchQuery || hasCategoryFilter || hasStatusFilter || isNegativeFilter;
+      hasSearchQuery ||
+      hasCategoryFilter ||
+      hasStatusFilter ||
+      hasWorktreeFilter ||
+      isNegativeFilter;
 
     // If no filters active, return empty sets (show all nodes normally)
     if (!hasActiveFilter) {
@@ -157,6 +202,7 @@ export function useGraphFilter(
         highlightedNodeIds: new Set<string>(),
         highlightedEdgeIds: new Set<string>(),
         availableCategories,
+        availableWorktrees,
         hasActiveFilter: false,
       };
     }
@@ -170,6 +216,7 @@ export function useGraphFilter(
       let matchesSearch = true;
       let matchesCategory = true;
       let matchesStatus = true;
+      let matchesWorktree = true;
 
       // Check search query match (title or description)
       if (hasSearchQuery) {
@@ -189,8 +236,14 @@ export function useGraphFilter(
         matchesStatus = selectedStatuses.includes(effectiveStatus);
       }
 
+      // Check worktree match
+      if (hasWorktreeFilter) {
+        const worktreeLabel = getFeatureWorktreeLabel(feature, primaryWorktreeBranch);
+        matchesWorktree = selectedWorktrees.includes(worktreeLabel);
+      }
+
       // All conditions must be true for a match
-      if (matchesSearch && matchesCategory && matchesStatus) {
+      if (matchesSearch && matchesCategory && matchesStatus && matchesWorktree) {
         matchedNodeIds.add(feature.id);
       }
     }
@@ -227,6 +280,7 @@ export function useGraphFilter(
       highlightedNodeIds,
       highlightedEdgeIds,
       availableCategories,
+      availableWorktrees,
       hasActiveFilter: true,
     };
   }, [
@@ -234,7 +288,9 @@ export function useGraphFilter(
     searchQuery,
     selectedCategories,
     selectedStatuses,
+    selectedWorktrees,
     isNegativeFilter,
     runningAutoTasks,
+    primaryWorktreeBranch,
   ]);
 }

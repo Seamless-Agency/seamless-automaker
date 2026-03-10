@@ -11,6 +11,7 @@ import {
   Eye,
   EyeOff,
   ChevronDown,
+  GitBranch,
   Play,
   Pause,
   Clock,
@@ -44,11 +45,13 @@ const statusDisplayConfig: Record<
 interface GraphFilterControlsProps {
   filterState: GraphFilterState;
   availableCategories: string[];
+  availableWorktrees: string[];
   hasActiveFilter: boolean;
   searchQuery: string;
   onSearchQueryChange: (query: string) => void;
   onCategoriesChange: (categories: string[]) => void;
   onStatusesChange: (statuses: string[]) => void;
+  onWorktreesChange: (worktrees: string[]) => void;
   onNegativeFilterChange: (isNegative: boolean) => void;
   onClearFilters: () => void;
 }
@@ -56,15 +59,18 @@ interface GraphFilterControlsProps {
 export function GraphFilterControls({
   filterState,
   availableCategories,
+  availableWorktrees,
   hasActiveFilter,
   searchQuery,
   onSearchQueryChange,
   onCategoriesChange,
   onStatusesChange,
+  onWorktreesChange,
   onNegativeFilterChange,
   onClearFilters,
 }: GraphFilterControlsProps) {
-  const { selectedCategories, selectedStatuses, isNegativeFilter } = filterState;
+  const { selectedCategories, selectedStatuses, selectedWorktrees, isNegativeFilter } =
+    filterState;
 
   const handleCategoryToggle = (category: string) => {
     if (selectedCategories.includes(category)) {
@@ -98,6 +104,22 @@ export function GraphFilterControls({
     }
   };
 
+  const handleWorktreeToggle = (worktree: string) => {
+    if (selectedWorktrees.includes(worktree)) {
+      onWorktreesChange(selectedWorktrees.filter((w) => w !== worktree));
+    } else {
+      onWorktreesChange([...selectedWorktrees, worktree]);
+    }
+  };
+
+  const handleSelectAllWorktrees = () => {
+    if (selectedWorktrees.length === availableWorktrees.length) {
+      onWorktreesChange([]);
+    } else {
+      onWorktreesChange([...availableWorktrees]);
+    }
+  };
+
   const categoryButtonLabel =
     selectedCategories.length === 0
       ? 'All Categories'
@@ -112,6 +134,13 @@ export function GraphFilterControls({
         ? statusDisplayConfig[selectedStatuses[0] as StatusFilterValue]?.label ||
           selectedStatuses[0]
         : `${selectedStatuses.length} Statuses`;
+
+  const worktreeButtonLabel =
+    selectedWorktrees.length === 0
+      ? 'All Worktrees'
+      : selectedWorktrees.length === 1
+        ? selectedWorktrees[0]
+        : `${selectedWorktrees.length} Worktrees`;
 
   return (
     <Panel position="top-left" className="flex items-center gap-2">
@@ -211,6 +240,80 @@ export function GraphFilterControls({
                         onCheckedChange={() => handleCategoryToggle(category)}
                       />
                       <span className="text-sm truncate">{category}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        {/* Worktree Filter Dropdown */}
+        <Popover>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    'h-8 px-2 gap-1.5',
+                    selectedWorktrees.length > 0 && 'bg-brand-500/20 text-brand-500'
+                  )}
+                >
+                  <GitBranch className="w-4 h-4" />
+                  <span className="text-xs max-w-[120px] truncate">{worktreeButtonLabel}</span>
+                  <ChevronDown className="w-3 h-3 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+            </TooltipTrigger>
+            <TooltipContent>Filter by Worktree</TooltipContent>
+          </Tooltip>
+          <PopoverContent
+            align="start"
+            className="w-56 p-2"
+            onOpenAutoFocus={(e) => e.preventDefault()}
+          >
+            <div className="space-y-2">
+              <div className="text-xs font-medium text-muted-foreground px-2 py-1">Worktrees</div>
+
+              <div
+                className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer"
+                onClick={handleSelectAllWorktrees}
+              >
+                <Checkbox
+                  checked={
+                    selectedWorktrees.length === availableWorktrees.length &&
+                    availableWorktrees.length > 0
+                  }
+                  onCheckedChange={handleSelectAllWorktrees}
+                />
+                <span className="text-sm font-medium">
+                  {selectedWorktrees.length === availableWorktrees.length
+                    ? 'Deselect All'
+                    : 'Select All'}
+                </span>
+              </div>
+
+              <div className="h-px bg-border" />
+
+              <div className="max-h-48 overflow-y-auto space-y-0.5">
+                {availableWorktrees.length === 0 ? (
+                  <div className="text-xs text-muted-foreground px-2 py-2">
+                    No worktrees available
+                  </div>
+                ) : (
+                  availableWorktrees.map((worktree) => (
+                    <div
+                      key={worktree}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer"
+                      onClick={() => handleWorktreeToggle(worktree)}
+                    >
+                      <Checkbox
+                        checked={selectedWorktrees.includes(worktree)}
+                        onCheckedChange={() => handleWorktreeToggle(worktree)}
+                      />
+                      <span className="text-sm truncate">{worktree}</span>
                     </div>
                   ))
                 )}

@@ -9,8 +9,6 @@ import { toast } from 'sonner';
 interface GraphViewProps {
   features: Feature[];
   runningAutoTasks: string[];
-  currentWorktreePath: string | null;
-  currentWorktreeBranch: string | null;
   projectPath: string | null;
   searchQuery: string;
   onSearchQueryChange: (query: string) => void;
@@ -32,8 +30,6 @@ interface GraphViewProps {
 export function GraphView({
   features,
   runningAutoTasks,
-  currentWorktreePath,
-  currentWorktreeBranch,
   projectPath,
   searchQuery,
   onSearchQueryChange,
@@ -55,28 +51,6 @@ export function GraphView({
 
   // Use the same background hook as the board view
   const { backgroundImageStyle, backgroundSettings } = useBoardBackground({ currentProject });
-
-  // Filter features by current worktree (same logic as board view)
-  const filteredFeatures = useMemo(() => {
-    const effectiveBranch = currentWorktreeBranch;
-
-    return features.filter((f) => {
-      const featureBranch = f.branchName as string | undefined;
-
-      if (!featureBranch) {
-        // No branch assigned - show only on primary worktree
-        return currentWorktreePath === null;
-      } else if (effectiveBranch === null) {
-        // Viewing main but branch not initialized
-        return projectPath
-          ? useAppStore.getState().isPrimaryWorktreeBranch(projectPath, featureBranch)
-          : false;
-      } else {
-        // Match by branch name
-        return featureBranch === effectiveBranch;
-      }
-    });
-  }, [features, currentWorktreePath, currentWorktreeBranch, projectPath]);
 
   // Handle node double click - edit
   const handleNodeDoubleClick = useCallback(
@@ -223,7 +197,7 @@ export function GraphView({
   return (
     <div className="flex-1 overflow-hidden relative">
       <GraphCanvas
-        features={filteredFeatures}
+        features={features}
         runningAutoTasks={runningAutoTasks}
         searchQuery={searchQuery}
         onSearchQueryChange={onSearchQueryChange}
